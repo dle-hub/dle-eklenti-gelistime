@@ -103,7 +103,9 @@ templates/
 
 ### JavaScript Yapısı
 
-DLE, jQuery kütüphanesini temel alır:
+DLE, jQuery kütüphanesini temel alır.
+
+**ÖNEMLI:** DLE'de AJAX istekleri her zaman `index.php?controller=ajax&mod=modul_adi` formatında yapılır!
 
 ```javascript
 // Temel DLE JavaScript Fonksiyonları
@@ -113,6 +115,14 @@ doCommentsRate('1', comment_id) // Yorum oylama
 dle_news_delete(news_id)       // Haber silme (admin)
 ShowProfile(username, url)     // Profil gösterimi
 save_last_viewed(news_id)      // Son görüntülenenleri kaydet
+
+// AJAX İstek Formatı
+$.post(dle_root + "index.php?controller=ajax&mod=modul_adi", {
+    user_hash: dle_login_hash,
+    // diğer parametreler
+}, function(data) {
+    // callback
+}, "json");
 ```
 
 ### CSS Yapısı
@@ -253,12 +263,12 @@ save_last_viewed(news_id)      // Son görüntülenenleri kaydet
     <div class="news-favorites">
         [is-logged]
         [add-favorites]
-        <button class="btn-add-favorite" onclick="addToFavorites({news-id})">
+        <button class="btn-add-favorite" onclick="addToFavorites({news-id}); return false;">
             <i class="icon-heart"></i> Favorilere Ekle
         </button>
         [/add-favorites]
         [del-favorites]
-        <button class="btn-del-favorite" onclick="delFromFavorites({news-id})">
+        <button class="btn-del-favorite" onclick="delFromFavorites({news-id}); return false;">
             <i class="icon-heart-broken"></i> Favorilerden Sil
         </button>
         [/del-favorites]
@@ -2653,20 +2663,24 @@ https://siteadi.com/page/2/
 
 ```javascript
 // Favorilere ekle
-$.post(dle_root + "index.php", {
-    mod: "favorites",
+$.post(dle_root + "index.php?controller=ajax&mod=favorites", {
     id: news_id,
     action: "add",
     user_hash: dle_login_hash
-});
+}, function(data) {
+    $(".add-favorites").hide();
+    $(".del-favorites").show();
+}, "json");
 
 // Favorilerden sil
-$.post(dle_root + "index.php", {
-    mod: "favorites",
+$.post(dle_root + "index.php?controller=ajax&mod=favorites", {
     id: news_id,
     action: "delete",
     user_hash: dle_login_hash
-});
+}, function(data) {
+    $(".del-favorites").hide();
+    $(".add-favorites").show();
+}, "json");
 ```
 
 ---
@@ -2862,9 +2876,8 @@ if (file_exists(ENGINE_DIR . '/ajax/' . $mod . '.php')) {
 **Kullanım:**
 
 ```javascript
-$.get(dle_root + "index.php", {
-    controller: "ajax",
-    mod: "comments",
+// ✅ DOĞRU FORMAT
+$.get(dle_root + "index.php?controller=ajax&mod=comments", {
     news_id: 123,
     cstart: 1
 }, function(data) {
@@ -2893,9 +2906,8 @@ $.get(dle_root + "index.php", {
 **Kullanım:**
 
 ```javascript
-$.post(dle_root + "index.php", {
-    controller: "ajax",
-    mod: "addcomments",
+// ✅ DOĞRU FORMAT
+$.post(dle_root + "index.php?controller=ajax&mod=addcomments", {
     id: news_id,
     text: comment_text,
     name: user_name,
@@ -2904,9 +2916,10 @@ $.post(dle_root + "index.php", {
 }, function(data) {
     if (data.success) {
         // Yorum başarıyla eklendi
+        DLEPush.success("Yorum eklendi");
     } else {
         // Hata mesajı
-        alert(data.error);
+        DLEPush.error(data.error);
     }
 }, "json");
 ```
@@ -2941,9 +2954,7 @@ veya hata durumunda:
 
 ```javascript
 // Favorilere ekle
-$.post(dle_root + "index.php", {
-    controller: "ajax",
-    mod: "favorites",
+$.post(dle_root + "index.php?controller=ajax&mod=favorites", {
     id: news_id,
     action: "add",
     user_hash: dle_login_hash
@@ -2953,9 +2964,7 @@ $.post(dle_root + "index.php", {
 }, "json");
 
 // Favorilerden sil
-$.post(dle_root + "index.php", {
-    controller: "ajax",
-    mod: "favorites",
+$.post(dle_root + "index.php?controller=ajax&mod=favorites", {
     id: news_id,
     action: "delete",
     user_hash: dle_login_hash
@@ -2977,18 +2986,15 @@ $.post(dle_root + "index.php", {
 
 ```javascript
 function doRate(type, news_id) {
-    $.post(dle_root + "index.php", {
-        controller: "ajax",
-        mod: "rating",
+    $.post(dle_root + "index.php?controller=ajax&mod=rating", {
         id: news_id,
-        type: type,  // 'plus' veya 'minus'
+        type: type,
         user_hash: dle_login_hash
     }, function(data) {
         if (data.success) {
-            // Oy başarıyla verildi
             updateRatingDisplay(news_id, data.rating);
         } else {
-            alert(data.error);
+            DLEPush.error(data.error);
         }
     }, "json");
 }
@@ -3012,13 +3018,12 @@ formData.append('user_hash', dle_login_hash);
 formData.append('files', fileInput.files[0]);
 
 $.ajax({
-    url: dle_root + "index.php",
+    url: dle_root + "index.php?controller=ajax&mod=upload",
     type: "POST",
     data: formData,
     processData: false,
     contentType: false,
     success: function(data) {
-        // Dosya başarıyla yüklendi
         console.log(data.url);
     }
 });
@@ -3037,11 +3042,9 @@ $.ajax({
 ```javascript
 $("#search-input").on("input", function() {
     var query = $(this).val();
-    
+
     if (query.length > 2) {
-        $.get(dle_root + "index.php", {
-            controller: "ajax",
-            mod: "search",
+        $.get(dle_root + "index.php?controller=ajax&mod=search", {
             story: query
         }, function(data) {
             $("#search-results").html(data);
@@ -3061,9 +3064,8 @@ $("#search-input").on("input", function() {
 **Kullanım:**
 
 ```javascript
-$.post(dle_root + "index.php", {
-    controller: "ajax",
-    mod: "profile",
+// ✅ DOĞRU FORMAT
+$.post(dle_root + "index.php?controller=ajax&mod=profile", {
     action: "update",
     fullname: fullname,
     land: land,
@@ -3071,9 +3073,9 @@ $.post(dle_root + "index.php", {
     user_hash: dle_login_hash
 }, function(data) {
     if (data.success) {
-        // Profil güncellendi
+        DLEPush.success("Profil güncellendi");
     } else {
-        alert(data.error);
+        DLEPush.error(data.error);
     }
 }, "json");
 ```
@@ -3089,9 +3091,8 @@ $.post(dle_root + "index.php", {
 **Kullanım:**
 
 ```javascript
-$.post(dle_root + "index.php", {
-    controller: "ajax",
-    mod: "registration",
+// ✅ DOĞRU FORMAT
+$.post(dle_root + "index.php?controller=ajax&mod=registration", {
     login: username,
     password: password,
     email: email,
@@ -3099,9 +3100,8 @@ $.post(dle_root + "index.php", {
     user_hash: dle_login_hash
 }, function(data) {
     if (data.success) {
-        // Kayıt başarılı
+        DLEPush.success("Kayıt başarılı");
     } else {
-        // Hata mesajlarını göster
         $.each(data.errors, function(key, value) {
             $("#" + key + "-error").text(value);
         });
@@ -3653,7 +3653,7 @@ $id = intval($_POST['id']);
 if ($action == "save") {
     $data = $db->safesql($_POST['data']);
     $db->query("UPDATE " . PREFIX . "_post SET xfields='{$data}' WHERE id='{$id}'");
-    
+
     echo json_encode(array("success" => true));
 } else {
     echo json_encode(array("success" => false, "error" => "Geçersiz işlem"));
@@ -3663,23 +3663,205 @@ if ($action == "save") {
 
 ### JavaScript ile AJAX Kullanımı
 
+**ÖNEMLI:** DLE'de tüm AJAX istekleri `controller=ajax&mod=modul_adi` formatında yapılır!
+
 ```javascript
+// ✅ DOĞRU KULLANIM
 function saveData(id, data) {
-    $.post(dle_root + "index.php", {
-        controller: "ajax",
-        mod: "my_ajax",
+    $.post(dle_root + "index.php?controller=ajax&mod=my_ajax", {
         action: "save",
         id: id,
         data: data,
         user_hash: dle_login_hash
     }, function(response) {
         if (response.success) {
-            alert("Başarıyla kaydedildi!");
+            DLEPush.success("Başarıyla kaydedildi!");
         } else {
-            alert("Hata: " + response.error);
+            DLEPush.error(response.error);
         }
     }, "json");
 }
+
+### DLEPush Kullanımı
+
+**ÖNEMLİ:** DLEPush fonksiyonları **tek parametre** alır (mesaj string):
+
+```javascript
+// ✅ DOĞRU - Tek parametre (mesaj string)
+DLEPush.success('Başarı mesajı');
+DLEPush.error('Hata mesajı');
+DLEPush.warning('Uyarı mesajı');
+DLEPush.info('Bilgi mesajı');
+
+// ❌ YANLIŞ - Objekt ile kullanılmaz
+DLEPush.success({ message: 'Mesaj' });
+DLEPush.error({ error: 'Hata' });
+```
+
+### AJAX Örnekleri
+
+```javascript
+// ✅ GET İsteği Örneği
+$.get(dle_root + "index.php?controller=ajax&mod=comments", {
+    news_id: news_id,
+    cstart: cstart
+}, function(data) {
+    $("#dle-ajax-comments").html(data.comments);
+}, "json");
+
+// ✅ Favori İşlemleri
+$.post(dle_root + "index.php?controller=ajax&mod=favorites", {
+    id: news_id,
+    action: "add",
+    user_hash: dle_login_hash
+}, function(data) {
+    $(".add-favorites").hide();
+    $(".del-favorites").show();
+}, "json");
+
+// ✅ Oy Verme
+$.post(dle_root + "index.php?controller=ajax&mod=rating", {
+    id: news_id,
+    type: "plus",
+    user_hash: dle_login_hash
+}, function(data) {
+    if (data.success) {
+        updateRatingDisplay(news_id, data.rating);
+    } else {
+        DLEPush.error(data.error);
+    }
+}, "json");
+
+// ✅ Dosya Yükleme
+var formData = new FormData();
+formData.append('controller', 'ajax');
+formData.append('mod', 'upload');
+formData.append('user_hash', dle_login_hash);
+formData.append('files', fileInput.files[0]);
+
+$.ajax({
+    url: dle_root + "index.php?controller=ajax&mod=upload",
+    type: "POST",
+    data: formData,
+    processData: false,
+    contentType: false,
+    success: function(data) {
+        console.log(data.url);
+    }
+});
+
+// ✅ Arama
+$("#search-input").on("input", function() {
+    var query = $(this).val();
+
+    if (query.length > 2) {
+        $.get(dle_root + "index.php?controller=ajax&mod=search", {
+            story: query
+        }, function(data) {
+            $("#search-results").html(data);
+        });
+    }
+});
+
+// ✅ Profil Güncelleme
+$.post(dle_root + "index.php?controller=ajax&mod=profile", {
+    action: "update",
+    fullname: fullname,
+    land: land,
+    signature: signature,
+    user_hash: dle_login_hash
+}, function(data) {
+    if (data.success) {
+        DLEPush.success("Profil güncellendi");
+    } else {
+        DLEPush.error(data.error);
+    }
+}, "json");
+
+// ✅ Kayıt
+$.post(dle_root + "index.php?controller=ajax&mod=registration", {
+    login: username,
+    password: password,
+    email: email,
+    sec_code: captcha,
+    user_hash: dle_login_hash
+}, function(data) {
+    if (data.success) {
+        DLEPush.success("Kayıt başarılı");
+    } else {
+        $.each(data.errors, function(key, value) {
+            $("#" + key + "-error").text(value);
+        });
+    }
+}, "json");
+
+// ✅ Yorum Ekleme
+$.post(dle_root + "index.php?controller=ajax&mod=addcomments", {
+    id: news_id,
+    text: comment_text,
+    name: user_name,
+    email: user_email,
+    user_hash: dle_login_hash
+}, function(data) {
+    if (data.success) {
+        DLEPush.success("Yorum eklendi");
+        $("#dle-ajax-comments").prepend(data.comment);
+    } else {
+        DLEPush.error(data.error);
+    }
+}, "json");
+```
+
+### AJAX Modül Parametreleri
+
+| Parametre | Açıklama | Örnek |
+|-----------|----------|-------|
+| `controller` | AJAX yönlendirici | `ajax` |
+| `mod` | Modül adı | `favorites`, `rating`, `comments` |
+| `user_hash` | Güvenlik token | `dle_login_hash` |
+| `action` | İşlem tipi | `add`, `delete`, `update` |
+| `id` | Kayıt ID | `123` |
+
+### Mevcut AJAX Modülleri
+
+```
+engine/ajax/
+├── addcomments.php      # Yorum ekleme
+├── adminfunction.php    # Admin fonksiyonları
+├── allvotes.php         # Tüm oylar
+├── antivirus.php        # Antivirüs tarama
+├── clean.php            # Temizlik
+├── comments.php         # Yorum listeleme
+├── commentssubscribe.php # Yorum aboneliği
+├── complaint.php        # Şikayet
+├── controller.php       # AJAX yönlendirici
+├── deletecomments.php   # Yorum silme
+├── editcomments.php     # Yorum düzenleme
+├── editnews.php         # Haber düzenleme
+├── emotions.php         # Emoticonlar
+├── favorites.php        # Favoriler
+├── feedback.php         # Geri bildirim
+├── find_relates.php     # İlgili haberler
+├── find_tags.php        # Etiket arama
+├── keywords.php         # Anahtar kelimeler
+├── message.php          # Mesaj
+├── newsletter.php       # Bülten
+├── plugins.php          # Eklentiler
+├── pm.php               # Özel mesaj
+├── poll.php             # Anket
+├── profile.php          # Profil
+├── quote.php            # Alıntı
+├── rating.php           # Oy verme
+├── rebuild.php          # Yeniden oluştur
+├── registration.php     # Kayıt
+├── replycomments.php    # Yorum cevabı
+├── rss.php              # RSS
+├── search.php           # Arama
+├── templates.php        # Template
+├── twofactor.php        # 2FA
+├── updates.php          # Güncellemeler
+├── upload.php           # Dosya yükleme
+└── vote.php             # Anket oy
 ```
 
 ### Özel Template Oluşturma
