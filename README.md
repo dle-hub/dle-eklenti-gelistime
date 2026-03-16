@@ -1,195 +1,201 @@
-# 📘 DataLife Engine (DLE) 19.1+ Eklenti Geliştirme Ansiklopedisi (50 Madde)
+# 📘 DataLife Engine (DLE) 19.x+ Eklenti Geliştirme Ansiklopedisi (Nihai Rehber)
 
-Bu rehber, DLE 19.x mimarisini atomlarına ayırarak, bir eklentinin fikir aşamasından yayına alınmasına kadar gereken tüm teknik detayları ve kod iskeletlerini kapsar.
+Bu döküman, DLE 19.1 ve üzeri sürümlerde profesyonel, güvenli ve sistemle %100 uyumlu (Native) eklentiler geliştirmek için gereken **TÜM** teknik detayları, kod iskeletlerini ve resmi API referanslarını içeren tek dev kaynaktır.
 
 ---
 
-## 🏗️ BÖLÜM 1: TEMEL MİMARİ VE DOSYA SİSTEMİ
+## 🏗️ 1. MİMARİ VE DOSYA YAPISI (VFS)
 
-### 1. DLE 19.x Vizyonu
-DLE 19+, modülerlik ve güvenlik üzerine inşa edilmiştir. Eklentiler artık çekirdek dosyaları fiziksel olarak değiştirmez (VFS).
+DLE, **Virtual File System (VFS)** mimarisini kullanır. Eklentiler çekirdek dosyalara fiziksel olarak dokunmaz; `plugin.xml` üzerinden sanal müdahaleler yapar.
 
-### 2. VFS (Virtual File System) Mantığı
-Sistem, `plugin.xml` içindeki talimatları okuyarak dosyaların bellekteki sanal kopyalarını değiştirir. Fiziksel dosyanız bozulsa bile eklenti pasif edildiğinde sistem orijinal haline döner.
-
-### 3. Kritik Klasör Yapısı
-*   `engine/inc/`: Admin panel modülleri.
-*   `engine/modules/`: Site frontend modülleri.
-*   `engine/ajax/`: Arka plan işleyiciler.
-
-### 4. Direct Access Koruması
-Tüm PHP dosyalarınızın en başında şu satır ZORUNLUDUR:
-```php
-if( !defined( 'DATALIFEENGINE' ) ) die( "Hacking attempt!" );
+### Standart Klasör Organizasyonu
+```text
+Eklenti_Paketi/
+├── plugin.xml           # Eklentinin beyni: Kurulum, SQL, Dosya Müdahaleleri
+└── upload/              # Sunucu kök dizinine atılacak dosyalar
+    ├── engine/
+    │   ├── inc/         # Yönetim Paneli (Admin) Modülleri
+    │   ├── modules/     # Site Ön Yüz (Frontend) Mantığı
+    │   ├── ajax/        # Arka Plan (Controller) İşleyicileri
+    │   ├── api/         # Dahili API Sınıfları
+    │   └── data/        # Ayar dosyaları (dbconfig.php vb.)
+    ├── public/          # [v19+] Dışa açık JS, CSS ve Görseller
+    └── templates/       # .tpl Şablon Dosyaları
 ```
 
-### 5. Logged In Koruması
-Sadece yetkili adminlerin erişmesini istediğiniz dosyalar için:
+### Kritik Güvenlik Satırları
+Tüm PHP dosyalarınızın en başına şu satırları eklemek **ZORUNLUDUR**:
 ```php
+if( !defined( 'DATALIFEENGINE' ) ) die( "Hacking attempt!" );
+
+// Sadece Admin Panel dosyaları için ek olarak:
 if( !defined( 'LOGGED_IN' ) ) die( "Hacking attempt!" );
 ```
 
 ---
 
-## 📜 BÖLÜM 2: PLUGIN.XML USTALIĞI
+## 📜 2. PLUGIN.XML VE SANAL DOSYA SİSTEMİ
 
-### 6. XML Metadata Tanımlama
-Eklenti adı, sürümü ve benzersiz ID'si (`<id>`) doğru tanımlanmalıdır.
+Eklentinin kurulumu ve dosya müdahaleleri burada tanımlanır.
 
-### 7. {prefix} ve {charset} Etiketleri
-SQL sorgularında statik `dle_` kullanmayın. Daima `{prefix}` kullanın. Karakter seti için `{charset}` kullanın.
-
-### 8. <mysqlinstall> Prosedürü
-İlk kurulumda tabloları oluşturur. `IF NOT EXISTS` kullanmak çakışmaları önler.
-
-### 9. <mysqldelete> ve Temizlik
-Eklenti silindiğinde geride çöp bırakmamak için `DROP TABLE` komutlarını içermelidir.
-
-### 10. <file> Hedefleme
-Modifikasyon yapılacak dosya yolu tam olarak yazılmalıdır (Örn: `engine/engine.php`).
-
-### 11. <operation action="create">
-DLE'de olmayan bir dosyayı (Örn: Modül linki) sıfırdan oluşturmak için en güçlü araçtır.
-
-### 12. searchcode ve replacecode Mantığı
-Kodun üstüne (`before`), altına (`after`) ekler veya değiştirir (`replace`). Regex olmayan düz metinler daha stabildir.
+*   **SQL Operasyonları:** Kurulum (`<mysqlinstall>`) ve silme (`<mysqldelete>`) işlemlerinde `{prefix}` ve `{charset}` etiketleri kullanılmalıdır.
+*   **Dosya Müdahaleleri:** Kod enjeksiyonu için `after`, `before` veya `replace` eylemleri kullanılır.
+*   **Yeni Dosya Oluşturma:** DLE'de olmayan bir dosyayı (Örn: Modül linki) sıfırdan yaratmak için `<operation action="create">` kullanılır.
 
 ---
 
-## 🎨 BÖLÜM 3: NATIVE ADMIN UI STANDARTLARI
+## 🎨 3. YÖNETİM PANELİ (ADMIN PANEL) GELİŞTİRME
 
-### 13. echoheader() Kullanımı
-Sayfa başlığını, ikonunu ve açıklamasını sisteme tanıtır. Breadcrumb'ları otomatik hazırlar.
+Admin modülleri mutlaka `/engine/inc/` dizininde olmalıdır.
 
-### 14. Layout Flow (Akış Hiyerarşisi)
-DLE sayfaları yukarıdan aşağıya: Header -> Navbar -> Alert -> Table/Panel -> Footer silsilesini takip eder.
+### A. Modül Kaydı ve Erişim (PREFIX_admin_sections)
+Modülünüzün "Diğer Bölümler" listesinde görünmesi için veritabanına kayıt edilmelidir.
 
-### 15. panel-default vs panel-flat
-*   `panel-default`: Kenarlıklı, bölmeli içerikler için.
-*   `panel-flat`: Ayarların listelendiği, tablosal görünümler için.
+**Tablo Parametreleri:**
+*   **name:** Dosya adı (uzantısız, örn: `mymod`).
+*   **title:** Modülün paneldeki başlığı.
+*   **descr:** Modülün kısa açıklaması.
+*   **icon:** İkon ismi. Önerilen boyut **70x70** pikseldir.
+*   **allow_groups:** Erişebilecek gruplar (`all` veya `1,2,3`).
 
-### 16. Dinamik Navbar (navbar-collapse collapse)
-Mobilde hamburger menüye dönüşen tek standart yapıdır. `navbar-xs` ile zarif görünüm sağlar.
+**Örnek Kayıt SQL:**
+```sql
+INSERT INTO `{prefix}_admin_sections` (`name`, `title`, `descr`, `icon`, `allow_groups`) 
+VALUES ('mymod', 'Modül Başlığı', 'Modül açıklaması...', 'mymod.png', '1');
+```
 
-### 17. Sağa Dayalı Araçlar (navbar-right)
-Arama kutuları ve "Yeni Ekle" butonlarını sağ tarafta toplamak için kullanılır.
+### B. Dinamik Navigasyon (navbar-collapse collapse)
+Mobilde hamburger menüye dönüşen, filtreleme ve araç çubuğu yapısı:
+```html
+<div class="navbar navbar-default navbar-component navbar-xs systemsettings">
+    <ul class="nav navbar-nav visible-xs-block">
+        <li class="full-width text-center">
+            <a data-toggle="collapse" data-target="#navbar-filter"><i class="fa fa-bars"></i></a>
+        </li>
+    </ul>
+    <div class="navbar-collapse collapse" id="navbar-filter">
+        <ul class="nav navbar-nav">
+            <li class="active font-bold"><a href="#"><i class="fa fa-cog position-left"></i> Ayarlar</a></li>
+            <li><a href="#"><i class="fa fa-list position-left"></i> Kayıtlar</a></li>
+        </ul>
+        <ul class="nav navbar-nav navbar-right">
+            <li>
+                <div class="navbar-form">
+                    <input type="text" name="search" class="form-control" placeholder="Hızlı Ara...">
+                </div>
+            </li>
+            <li><a href="#" class="bg-primary-600 text-white"><i class="fa fa-plus"></i> Yeni Ekle</a></li>
+        </ul>
+    </div>
+</div>
+```
 
-### 18. Semantik Renkler (Material Palette)
-*   `bg-primary-600`: Ayarlar.
-*   `bg-teal`: Kaydet/Başarı.
-*   `bg-danger-600`: Silme/Hata.
-
-### 19. Form-Horizontal Düzeni
-Label ve giriş alanlarının 2:10 oranında (`col-md-2`, `col-md-10`) hizalandığı profesyonel düzen.
-
-### 20. Tooltips ve Popovers (help-button)
-Kullanıcıya ayar hakkında bilgi vermek için `data-rel="popover"` sınıflı soru işareti ikonları.
-
-### 21. Native Checkboxes (icheck)
-DLE'nin standart kare checkboxlarını aktif etmek için sadece `class="icheck"` eklemeniz yeterlidir.
-
-### 22. IOS Tarzı Switcher (switch)
-Açma/kapatma (Toggle) işlemleri için `class="switch"` kullanılır.
-
----
-
-## ⚡ BÖLÜM 4: JAVASCRIPT & AJAX (JS API)
-
-### 23. DLEPush: Toast Bildirimleri
-`DLEPush.success`, `DLEPush.error`, `DLEPush.info` ve `DLEPush.warning` ile modern bildirimler.
-
-### 24. DLEPush Parametreleri
-`DLEPush.error(mesaj, baslik, sure)` formülünde süre milisaniye cinsindendir.
-
-### 25. ShowLoading() ve HideLoading()
-AJAX isteği başladığında ekranı karartıp "Bekleyin" spinner'ı çıkaran hayati fonksiyonlar.
-
-### 26. dle_login_hash (CSRF Koruması)
-Her AJAX POST isteğinde `user_hash` parametresi olarak bu değişkeni göndermek ZORUNLUDUR.
-
-### 27. tinyMCE.triggerSave() Senkronu
-Eğer formda editör varsa, veriyi okumadan önce editor içeriğini textarea'ya aktarır.
-
-### 28. DLEconfirm Onay Pencereleri
-Silme veya kritik işlemlerden önce `DLEconfirm` ile kullanıcı onayı alınması native bir kuraldır.
-
-### 29. DLEconfirmDelete Özelleşmiş Sınıfı
-Sadece silme işlemleri için optimize edilmiş, kırmızı temalı onay penceresi.
-
-### 30. AJAX .fail() Hata Yönetimi
-İnternet koptuğunda veya sunucu hata verdiğinde `jqXHR` üzerinden hatayı `DLEPush.error` ile basma pratiği.
+### C. UI Bileşenleri ve Form Standartları
+*   **Paneller:** `panel panel-default` (İçerik) veya `panel-flat` (Ayarlar tablosu).
+*   **Sekmeler:** `nav nav-tabs nav-tabs-solid` sınıfı ile panel üstüne yerleştirilir.
+*   **Form Düzeni:** `form-horizontal` kullanarak Label için `col-md-2`, Input için `col-md-10`.
+*   **Kontroller:** `icheck` (kutucuk) ve `switch` (toggled switch).
+*   **Yardım Butonu:** `i.help-button` ve `data-rel="popover"` ile native tooltip.
+*   **Alert Kutuları:** `alert alert-info alert-styled-left alert-arrow-left alert-component`.
 
 ---
 
-## 🌐 BÖLÜM 5: FRONTEND (MODULES) VE TEMPLATE
+## 🌐 4. SİTE ÖN YÜZ (FRONTEND) GELİŞTİRME
 
-### 31. {include} Etiketi ve Güvenlik
-`{include file="engine/modules/modul.php"}` kullanımı en güvenli dahil etme yöntemidir.
+### A. Modül Dahil Etme ({include ...})
+Şablon dosyalarına (`.tpl`) PHP dosyalarınızı dahil ederken parametre geçebilirsiniz:
+```smarty
+{include file="engine/modules/mymod.php?param1=value1&news_id={news-id}"}
+```
+**Güvenlik Uyarısı:** Modül klasöründe yazma izni (**CHMOD 777**) varsa DLE güvenlik nedeniyle dosyayı çalıştırmaz.
 
-### 32. Parametre Gönderimi (Query String)
-`modul.php?act=view&id=5` şeklinde gönderilen veriler PHP'de direkt değişken (`$act`, `$id`) olur.
-
-### 33. {news-id} Verisini Modüle Taşımak
-`fullstory.tpl` içinde `{include file="...php?id={news-id}"}` ile dinamik haber verisi taşınır.
-
-### 34. CHMOD 777 Güvenlik Yasağı
-Modül PHP dosyalarının bulunduğu klasörde yazma yetkisi varsa DLE o dosyayı "Hacking Attempt" diyerek çalıştırmaz.
-
-### 35. [aviable] ile Özel Sayfalar
-`main.tpl`'de sadece belirli bölümlerde (Örn: `?do=faq`) modülü gösterme mantığı.
-
-### 36. $tpl->load_template() ve Derleme
-Bir `.tpl` dosyasını belleğe yükleyip, içindeki etiketleri doldurup `compile` ile basma süreci.
+### B. Özel Bölüm Oluşturma (Aviable)
+Haber bloğu yerine kendi modülünüzü basmak:
+```smarty
+[aviable=faq] {include file="engine/modules/faq.php"} [/aviable]
+[not-aviable=faq] {content} [/not-aviable]
+```
 
 ---
 
-## 💾 BÖLÜM 6: ÇEKİRDEK SINIFLAR VE GLOBALLER
+## ⚡ 5. JAVASCRIPT, AJAX VE BİLDİRİMLER
 
-### 37. $db Sınıfı ve super_query
-Tek satır sonuç dönen (Örn: ID ile üye seçme) sorgular için `super_query` performansı artırır.
+### A. DLEPush (Toast Bildirim Sistemi)
+```javascript
+DLEPush.success('Mesaj', 'Başlık'); // Yeşil
+DLEPush.info('Mesaj', 'Başlık');    // Mavi
+DLEPush.warning('Mesaj', 'Başlık'); // Sarı
+DLEPush.error('Mesaj', 'Başlık', 5000); // Kırmızı (5 sn)
+```
 
-### 38. $db->safesql() Koruması
-SQL Injection yememek için kullanıcıdan gelen her veriyi bu süzgeçten geçirin.
+### B. AJAX İskeleti ve Spinner
+```javascript
+function saveAction() {
+    tinyMCE.triggerSave(); // Varsa editörü senkronize et
+    ShowLoading('');       // Ekranı kilitle
+    
+    $.post("index.php?controller=ajax&mod=myplugin", { 
+        data: 'val', 
+        user_hash: dle_login_hash // CSRF Koruması ZORUNLU
+    }, function(res) {
+        HideLoading('');   // Kilidi kaldır
+        if (res.success) DLEPush.success(res.message);
+        else DLEPush.error(res.error);
+    }, 'json');
+}
+```
 
-### 39. $member_id Dizisi
-Giriş yapan kullanıcının adından, şifresine, e-postasından grubuna kadar tüm veriler bu dizidedir.
+### C. TinyMCE ve Onay Pencereleri
+*   `tinymce.get('id').setContent(html)` / `getContent()`
+*   `DLEconfirm('Emin misiniz?', 'Başlık', function() { ... });`
+*   `DLEconfirmDelete('Silinecek!', 'Onay', function() { ... });`
 
-### 40. $config Dizisi
-Daima `$config['site_url']` veya `$config['version']` gibi verilere buradan erişin.
+---
 
-### 41. $user_group Yetki Haritası
-Belirli bir işlemin belirli bir grup tarafından yapılıp yapılamayacağını kontrol eder.
+## 📦 6. ÇEKİRDEK SINIFLAR VE GLOBALLER
 
-### 42. $lang Dil Paketi Dizisi
-Metinlerinizi asla PHP'ye hard-code yazmayın. `$lang['mesaj_adi']` şeklinde dil dosyasından çekin.
-
-### 43. $cat_info Kategori Verisi
-Sitedeki tüm kategorilerin isim, URL ve ID hiyerarşisini tutan devasa dizi.
+Dahil edilen PHP dosyalarında şu değişkenler hazır gelir:
+*   **$db:** Veritabanı sınıfı (`$db->super_query`, `$db->safesql`).
+*   **$tpl:** Şablon motoru sınıfı.
+*   **$member_id:** Giriş yapan kullanıcının tüm profil verileri (Array).
+*   **$config:** Tüm sistem ayarları.
+*   **$is_logged:** Kullanıcı girişi (true/false).
+*   **$lang:** Dil paketi dizisi.
+*   **$cat_info:** Kategori hiyerarşisi.
+*   **$category_id:** Mevcut kategori ID'si.
+*   **$_TIME:** Güncel UNIX zamanı.
+*   **$smartphone_detected:** Mobil cihaz tespiti (true/false).
+*   **$dle_module:** Mevcut sayfa ismi.
 
 ---
 
-## 🔌 BÖLÜM 7: RESMİ DLE API (engine/api)
+## 🔌 7. RESMİ DLE API ($dle_api)
 
-### 44. API Sürüm Uyumluluğu Garantisi
-API üzerinden yapılan işlemler, sistem güncellense bile PHP kodunuzun bozulmamasını sağlar.
+API kullanımı, sürüm güncellemelerinden etkilenmemek için tavsiye edilir.
+`include ('engine/api/api.class.php');`
 
-### 45. take_user_by_id() ile Veri Çekme
-Kullanıcı verilerini veritabanına sorgu atmadan, API'nin güvenli metodlarıyla çekme.
-
-### 46. change_user_group() ile Yetki Yönetimi
-Kullanıcı gruplarını, veritabanı yollarını düşünmeden tek satırla değiştirme.
-
-### 47. send_pm_to_user() (Özel Mesaj API)
-Standartlara uygun, bildirimli özel mesaj gönderme motoru.
-
-### 48. load_table() ile Gelişmiş Filtreleme
-Tablolardan veri çekerken sayfalama, sıralama ve WHERE koşullarını tek fonksiyonda toplama.
-
-### 49. save_to_cache() ve Performans
-Ağır sorguları önbelleğe alarak sitenin hızını (ve sunucu yükünü) optimize etme.
-
-### 50. DLEPlugins::Check() (ALTIN KURAL)
-Bir dosyayı `include` veya `require` edecekseniz, VFS'nin onu tanıması için bu fonksiyona sokmak ZORUNLUDUR.
+**Kritik API Fonksiyonları:**
+*   `take_user_by_id(id, fields)` / `take_user_by_name` / `take_user_by_email`
+*   `take_users_by_group(id, fields, limit)` / `take_users_by_ip`
+*   `change_user_name` / `change_user_pass` / `change_user_email` / `change_user_group`
+*   `external_auth(login, pass)` / `external_register(login, pass, email, group)`
+*   `send_pm_to_user(id, subject, text, from)`
+*   `load_table(table, fields, where, multirow, start, limit, sort, sort_order)`
+*   `save_to_cache(name, vars)` / `load_from_cache` / `clean_cache` / `get_cached_files`
+*   `edit_config(key, value)`
+*   `take_news(cat, fields, start, limit, sort, sort_order)`
+*   `checkGroup(id)`
+*   `install_admin_module(name, title, descr, icon, perm)` / `uninstall_admin_module` / `change_admin_module_perms`
 
 ---
-🚀 **Tebrikler!** Bu 50 maddeyi hazmettiyseniz, artık DataLife Engine için profesyonel eklentiler geliştirmeye hazırsınız.
+
+## 🛡️ 8. GÜVENLİK VE KODLAMA STANDARTLARI
+
+1.  **VFS Desteği (EN ÖNEMLİ):** Dosya dahil ederken her zaman:
+    `include (DLEPlugins::Check(ENGINE_DIR . '/modules/myscript.php'));`
+2.  **SQL Protection:** Kullanıcı verilerini `$db->safesql()` süzgecinden geçirin.
+3.  **CHMOD:** Yazma izni olan klasörlerde asla modül dosyası bulundurmayın.
+4.  **Hacking Attempt:** Dosya başlarındaki `DATALIFEENGINE` sabit kontrollerini unutmayın.
+
+---
+🚀 Bu rehber DLE 19.x mimarisindeki her detayı kapsayan **eksiksiz** teknik iskelettir.
