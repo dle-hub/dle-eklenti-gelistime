@@ -69,7 +69,45 @@ Mobilde hamburger menüye dönüşen, en profesyonel native navbar yapısı:
 
 ---
 
-## 🌐 3. Site Ön Yüz (Frontend - engine/modules)
+## 🎨 3. Yönetim Paneli (Admin UI) Standartları
+
+DLE admin paneli, tutarlı bir kullanıcı deneyimi için belirli tasarım kalıpları (Design Patterns) üzerine inşa edilmiştir.
+
+### A. Layout Hiyerarşisi
+Sayfalarınızı şu silsile ile yapılandırın:
+1.  **Üst Bilgi:** `echoheader()` (İkon + Başlık + Alt Başlık).
+2.  **Navigasyon:** `navbar-collapse` (Filtreler ve Sekmeler).
+3.  **İçerik:** `alert` (Bilgi/Uyarı mesajları) -> `panel` (Ana içerik alanı).
+4.  **Alt Bilgi:** `panel-footer` (Kaydet/İptal butonları) -> `echofooter()`.
+
+### B. Semantik Renk Paleti
+DLE'de renkler işlevsel anlamlar taşır. `bg-{color}` veya `label-{color}` sınıflarıyla kullanılır:
+*   **Primary (Mavi):** `bg-primary-600` - Ana eylemler ve ayarlar.
+*   **Success (Yeşil/Teal):** `bg-teal` - Kaydetme, ekleme, "aktif" durumu.
+*   **Danger (Kırmızı):** `bg-danger-600` - Silme, kritik hatalar, "pasif" durumu.
+*   **Info (Koyu Mavi):** `bg-info-800` veya `label-info` - Bilgilendirme ve ipuçları.
+*   **Warning (Sarı/Turuncu):** `alert-warning` - Dikkat gerektiren durumlar.
+
+### C. Tipografi ve Spacing (Boşluk) Kuralları
+*   **Vurgu:** `text-semibold`, `text-bold`, `text-size-small`.
+*   **Yardımcı:** `text-muted` (Silik gri metin).
+*   **İkonlar:** `position-left` (Metnin solundaki ikon için).
+*   **Dikey Boşluk:** `mt-10`, `mt-15`, `mt-20` sınıflarını form ve butonlar arasında kullanın.
+
+### D. Gelişmiş Komponentler
+**1. Native Alert Kutuları:**
+`alert-styled-left` ve `alert-arrow-left` kullanarak estetik uyum sağlayın:
+```html
+<div class="alert alert-info alert-styled-left alert-arrow-left alert-component">
+    <b>Bilgi:</b> Bu modül sadece yöneticiler içindir.
+</div>
+```
+
+**2. Status Labels:** `span.label.label-success`, `label-danger`, `label-info`.
+
+---
+
+## 🌐 4. Site Ön Yüz (Frontend - engine/modules)
 
 ### A. Modül Dahil Etme ({include ...})
 ```smarty
@@ -93,7 +131,7 @@ Modülünüze GET parametresi gibi veri gönderebilirsiniz:
 
 ---
 
-## 🔌 4. DLE API Sistemi (engine/api/api.class.php)
+## 🔌 5. DLE API Sistemi (engine/api/api.class.php)
 
 DLE API, hem eski hem de gelecekteki sürümlerle %100 uyumlu kod yazmanızı sağlar. Veritabanı bağlantısı veya sınıfları manuel çağırmanıza gerek kalmaz.
 
@@ -135,7 +173,7 @@ include ('engine/api/api.class.php');
 
 ---
 
-## 📦 5. Modüllerde Kullanılabilen Global Değişkenler
+## 📦 6. Modüllerde Kullanılabilen Global Değişkenler
 
 Dahil edilen (include) PHP dosyalarında hiçbir tanımlama yapmadan şu değişkenlere erişebilirsiniz:
 
@@ -156,7 +194,7 @@ Dahil edilen (include) PHP dosyalarında hiçbir tanımlama yapmadan şu değiş
 
 ---
 
-## ⚡ 6. DLEPush & AJAX & Bildirimler (Native JS API)
+## ⚡ 7. DLEPush & AJAX & Bildirimler (Native JS API)
 
 ### A. DLEPush (Toast Bildirim Sistemi)
 `DLEPush.tur(Mesaj, Başlık, Süre);`
@@ -175,7 +213,7 @@ $.post("index.php?controller=ajax&mod=test", { user_hash: dle_login_hash }, func
 
 ---
 
-## 📜 7. plugin.xml ve Güvenlik Kuralları
+## 📜 8. plugin.xml ve Güvenlik Kuralları
 
 1.  **Direct Access Block:** `if( !defined( 'DATALIFEENGINE' ) ) die( "Hacking attempt!" );`
 2.  **VFS Desteği (DLEPlugins::Check):** Dosya dahil ederken **ZORUNLUDUR**:
