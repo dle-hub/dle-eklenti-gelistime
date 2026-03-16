@@ -150,13 +150,39 @@ $.post('index.php?controller=ajax&mod=test', { data: 'val', user_hash: dle_login
 });
 ```
 
+### TinyMCE Senkronizasyonu (Veri Gönderme/Alma)
+Eğer formunuzda zengin metin editörü varsa, veriyi okumadan önce mutlaka senkronize etmelisiniz:
+```javascript
+// 1. Editördeki veriyi textarea'ya aktar (ZORUNLU)
+tinyMCE.triggerSave();
+
+// 2. Editöre dışarıdan veri basmak
+tinymce.get('short_story').setContent('<p>Bot ile çekilen içerik...</p>');
+
+// 3. Editördeki HTML içeriği JS ile almak
+var editor_html = tinymce.get('short_story').getContent();
+```
+
+### Ek Alanlar (xfields) Kullanımı
+DLE'nin ek alanlarını PHP tarafında hazırlayıp forma basmak için:
+```php
+$xfields = DLEXFields::FieldsList();
+$xf_root = array();
+foreach ($xfields['fields'] as $value) {
+    $xf_root[] = $value; // DLE her alanı bir form-group olarak hazırlar
+}
+echo implode('', $xf_root); // Formun içine enjekte edin
+```
+
 ---
 
 ## 🛡️ 5. Güvenlik ve En İyi Uygulamalar (Best Practices)
 
-1.  **Hacking Attempt:** Her PHP dosyasının başına şunu ekleyin:
+1.  **Hacking Attempt:** Her PHP dosyasının başına güvenliği tetiklemek için şunu ekleyin:
     `if( !defined( 'DATALIFEENGINE' ) OR !defined( 'LOGGED_IN' ) ) die( "Hacking attempt!" );`
-2.  **DLEPlugins::Check():** Dosya dahil ederken (`include`/`require`) mutlaka bu süzgeci kullanın.
+2.  **DLEPlugins::Check() (ZORUNLU):** DLE'de bir dosyayı `include` veya `require` ile çağırırken asla doğrudan yol yazmayın. DLE, eklenti müdahalelerini **Virtual File System (VFS)** üzerinden yönetir. Bu fonksiyonu kullanmazsanız yaptığınız XML modifikasyonları çalışmaz ve eklentiniz pasifken bile dosya okunur.
+    *   ❌ **Yanlış:** `include (ENGINE_DIR . '/modules/dosya.php');`
+    *   ✅ **Doğru:** `include (DLEPlugins::Check(ENGINE_DIR . '/modules/dosya.php'));`
 3.  **Cross-Site Request Forgery (CSRF):** AJAX isteklerinde mutlaka `user_hash: dle_login_hash` gönderin.
 4.  **Veritabanı:** Sorgularda tabloları `{prefix}_users` şeklinde yazın, asla statik `dle_` kullanmayın.
 5.  **Temizlik:** `mysqldelete` etiketinde mutlaka `DROP TABLE` komutunuzu bulundurun ki eklenti silindiğinde geride çöp bırakmasın.
