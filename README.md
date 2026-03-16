@@ -339,3 +339,70 @@ function ckeck_uncheck_all() {
 ```
 
 ---
+
+## 📜 11. ÖRNEK KURULUM DOSYASI (plugin.xml)
+
+Aşağıdaki örnek, DataLife Engine eklenti sisteminin (`plugin.xml`) tüm yeteneklerini (SQL sorguları, dosya oluşturma ve kod enjeksiyonu) gösteren kapsamlı bir şablondur:
+
+```xml
+<?xml version="1.0" encoding="utf-8"?>
+<dleplugin>
+	<name>Eklenti adı</name>
+	<description>Kısa açıklama</description>
+	<icon>public/adminpanel/images/reaction.png</icon>
+	<version>1.2</version>
+	<dleversion>19.0</dleversion>
+	<versioncompare>greater</versioncompare>
+	<upgradeurl></upgradeurl>
+	<filedelete>0</filedelete>
+	<needplugin></needplugin>
+	<mnotice>0</mnotice>
+	<mysqlinstall><![CDATA[Eklentiyi kurarken]]></mysqlinstall>
+	<mysqlupgrade><![CDATA[Eklentiyi güncellerken:]]></mysqlupgrade>
+	<mysqlenable><![CDATA[Eklentiyi aktif ederken:]]></mysqlenable>
+	<mysqldisable><![CDATA[Eklentiyi devredışı bırakırken:]]></mysqldisable>
+	<mysqldelete><![CDATA[Eklentiyi kaldırırken:]]></mysqldelete>
+	<phpinstall><![CDATA[]]></phpinstall>
+	<phpupgrade><![CDATA[]]></phpupgrade>
+	<phpenable><![CDATA[]]></phpenable>
+	<phpdisable><![CDATA[]]></phpdisable>
+	<phpdelete><![CDATA[]]></phpdelete>
+	<notice><![CDATA[MYSQL sorguları yazarken aşağıda yer alan servis etiketlerinide kullanabilirsiniz:
+
+{prefix} - bu etiket tabloya ön ek getirir ve bu ön ek ile kullanılmasını sağlar.
+{userprefix} - birden fazla site aynı veritabanını kullanıyorsa bu etiketten yararlanılabilirsiniz. -
+{charset} - bu etiket ile tabloların kodlama yapısını ayarlayabilirsiniz örneğin utf-8, utf8mb4 gibi.
+
+Lütfen dikkat: Eklentiyi yüklediğinizde, eklenti etkinleştirme tetikleyicisi otomatik olarak etkinleştirilir, ancak eklentiyi kaldırdığınızda eklenti devre dışı bırakma tetikleyicisi kullanılmaz]]></notice>
+	<file name="engine/modules/eklenti.php">
+		<operation action="after">
+			<searchcode><![CDATA[bul ]]></searchcode>
+			<replacecode><![CDATA[altına ekle ]]></replacecode>
+			<enabled>1</enabled>
+		</operation>
+		<operation action="before">
+			<searchcode><![CDATA[bul ]]></searchcode>
+			<replacecode><![CDATA[üstüne ekle]]></replacecode>
+			<enabled>1</enabled>
+		</operation>
+		<operation action="replace">
+			<searchcode><![CDATA[bul ]]></searchcode>
+			<replacecode><![CDATA[değiştir ]]></replacecode>
+			<enabled>1</enabled>
+		</operation>
+		<operation action="create">
+			<replacecode><![CDATA[yeni dosya ]]></replacecode>
+			<enabled>1</enabled>
+		</operation>
+	</file>
+	<file name="engine/inc/eklenti.php">
+		<operation action="create">
+			<replacecode><![CDATA[admin paneli kısmı burada ]]></replacecode>
+			<enabled>1</enabled>
+		</operation>
+	</file>
+</dleplugin>
+```
+
+---
+🚀 Bu rehber DLE 19.x mimarisindeki her detayı kapsayan **eksiksiz** teknik rehberdir. Eklentilerinizi sistem standartlarına uygun şekilde geliştirmek için bu iskeletleri baz alabilirsiniz.
