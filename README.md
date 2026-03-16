@@ -1,143 +1,195 @@
-# DataLife Engine (DLE) 19.1+ Geliştirici Master Rehberi (A'dan Z'ye)
+# DataLife Engine (DLE) 19.x+ Geliştirici Master Rehberi (A'dan Z'ye)
 
-Bu döküman, DLE 19.1 ve üzeri sürümlerde modern, güvenli ve tüm sistemle (Frontend, Admin, API) %100 uyumlu eklentiler geliştirmek isteyenler için hazırlanmış kapsamlı bir teknik kaynaktır.
-
----
-
-## 🏗️ 1. Sistem Mimarisi ve Dosya Yapısı
-
-DLE bir **VFS (Virtual File System)** yapısı kullanır. Çekirdek dosyalar fiziksel olarak değişmez; eklenti sistemi (`plugin.xml`) bu dosyaların sanal kopyalarını oluşturur ve müdahaleleri yönetir.
-
-### Standart Klasör Düzeni
-```text
-Eklenti_Klasoru/
-├── plugin.xml           # Eklentinin beyni: Kurulum, SQL, Dosya Müdahaleleri
-└── upload/              # Sunucu kök dizinine atılacak dosyalar
-    ├── engine/
-    │   ├── inc/         # Yönetim Paneli (Admin) Modülleri
-    │   ├── modules/     # Site Ön Yüz (Frontend) Mantığı
-    │   ├── ajax/        # Arka Plan (AJAX) İşleyicileri
-    │   └── api/         # [Dahili] DLE API Sınıfları
-    ├── public/          # [v19+] JS, CSS, Resimler (Dışa Açık)
-    └── templates/       # .tpl Şablon Dosyaları
-```
+Bu rehber, DLE çekirdek kodları (`inc`, `modules`, `ajax`) incelenerek hazırlanmış, %100 native uyumlu bir eklenti geliştirme iskeletidir.
 
 ---
 
-## 🌐 2. Site Ön Yüz (Frontend - engine/modules)
+## 🏗️ 1. DLE Eklenti Mimarisi (Kutsal Üçlü)
 
-Site ön yüzünde modülünüzü şablonlara (`.tpl`) dahil etmek için gelişmiş `{include ...}` etiketi kullanılır.
-
-### A. Şablona Dahil Etme ve Parametre Gönderimi
-```smarty
-{* Temel dahil etme *}
-{include file="engine/modules/mymod.php"}
-
-{* Parametre gönderimi (Değişkenler modül içinde $param1 ve $param2 olarak hazır gelir) *}
-{include file="engine/modules/mymod.php?param1=deger&param2=deger2"}
-
-{* Dinamik etiket gönderimi (Sadece main.tpl dışındaki şablonlarda) *}
-{include file="engine/modules/mymod.php?news_id={news-id}"}
-```
-> **Önemli:** Dahil edilen dosyanın bulunduğu klasörün yazma izni (CHMOD 777) **olmamalıdır**. DLE güvenlik gereği bu tip klasörlerden PHP çalıştırmaz.
-
-### B. Özel Sayfa/Bölüm Oluşturma
-Haber alanı yerine kendi modülümüzün çıktısını basmak (Örn: FAQ sayfası):
-```smarty
-[aviable=faq]
-    {include file="engine/modules/faq.php"}
-[/aviable]
-[not-aviable=faq]
-    {content}
-[/not-aviable]
-```
-Bu sayfa `site.com/index.php?do=faq` adresinde çalışacaktır.
+Profesyonel bir eklenti şu üç sac ayağı üzerine kurulur:
+1.  **Yönetim Paneli (`engine/inc/`):** Ayarların yapıldığı görsel arayüz.
+2.  **Site Ön Yüz (`engine/modules/`):** Ziyaretçilerin gördüğü içerik mantığı.
+3.  **AJAX İşleyici (`engine/ajax/`):** Veritabanı ile arka planda konuşan motor.
 
 ---
 
-## 🛠️ 3. Yönetim Paneli (Admin Panel - engine/inc)
+## 🛠️ 2. YÖNETİM PANELİ İSKELETİ (`engine/inc/yourplugin.php`)
 
-Admin modülleri `/engine/inc/` klasörüne atılır ve otomatik olarak `admin.php?mod=modul_adi` şeklinde erişilebilir.
+Bu dosya DLE Admin panelinin bir parçası gibi görünmeli ve davranmalıdır.
 
-### A. Modülü Panelde Kayıt Etme (Menu Entegrasyonu)
-Modülünüzün "Diğer Bölümler" listesinde görünmesi için `PREFIX_admin_sections` tablosuna kayıt edilmelidir:
-```sql
-INSERT INTO `{prefix}_admin_sections` (`name`, `title`, `descr`, `icon`, `allow_groups`) 
-VALUES ('mymod', 'Modül Başlığı', 'Modül açıklaması...', 'icon_yolu.png', '1');
-```
-*   **name:** Dosya ismi (uzantısız).
-*   **allow_groups:** Erişebilecek gruplar (Örn: `1,2,3` veya `all`).
-
----
-
-## 📦 4. DLE Global Değişkenler Listesi
-
-Dahil ettiğiniz modüllerde herhangi bir tanımlama yapmadan şu global değişkenlere erişebilirsiniz:
-
-| Değişken | Açıklama |
-| :--- | :--- |
-| `$is_logged` | Kullanıcı giriş yapmış mı? (true/false) |
-| `$member_id` | Giriş yapan kullanıcının profil verileri (Array) |
-| `$db` | DLE Veritabanı sınıfı |
-| `$tpl` | DLE Şablon (Template) sınıfı |
-| `$config` | Tüm sistem ayarları (Array) |
-| `$user_group` | Kullanıcı grupları ve yetkileri (Array) |
-| `$cat_info` | Kategori bilgileri ve hiyerarşisi |
-| `$lang` | Dil paketi metinleri |
-| `$dle_module` | Mevcut sayfa/bölüm ismi (`do` parametresi) |
-| `$_TIME` | Sistemin güncel UNIX zamanı (offset dahil) |
-
----
-
-## 🔌 5. DLE API Sistemi (engine/api)
-
-Sürüm güncellemelerinden etkilenmemek ve standart bir kod yapısı için DLE API kullanılması şiddetle tavsiye edilir.
-
-### API'yi Dahil Etme
 ```php
-include ('engine/api/api.class.php');
-```
+<?php
+if( !defined( 'DATALIFEENGINE' ) OR !defined( 'LOGGED_IN' ) ) die( "Hacking attempt!" );
 
-### Öne Çıkan API Fonksiyonları
-*   **Kullanıcı Verisi:** `$dle_api->take_user_by_id( $id, $fields );`
-*   **Kullanıcı Güncelleme:** `$dle_api->change_user_group( $id, $new_group );`
-*   **Özel Mesaj (PM):** `$dle_api->send_pm_to_user( $target_id, $subject, $text, $from_login );`
-*   **Haber Çekme:** `$dle_api->take_news( $cat_ids, $fields, $start, $limit );`
-*   **Tablo İşlemleri:** `$dle_api->load_table( 'table', 'fields', 'where', $multirow );`
-*   **Önbellek (Cache):** `$dle_api->save_to_cache( $name, $data );`
+// 1. Başlık ve İkon (Native DLE Tasarımı)
+echoheader( "<i class=\"fa fa-cubes position-left\"></i><span class=\"text-semibold\">Master Plugin v1.0</span>", "Eklenti yönetim merkezi" );
+
+// 2. Dinamik Navbar (navbar-collapse collapse) - AYARLAR VE FİLTRELER İÇİN
+echo <<<HTML
+<div class="navbar navbar-default navbar-component navbar-xs systemsettings">
+    <ul class="nav navbar-nav visible-xs-block">
+        <li class="full-width text-center"><a data-toggle="collapse" data-target="#nav-menu"><i class="fa fa-bars"></i></a></li>
+    </ul>
+    <div class="navbar-collapse collapse" id="nav-menu">
+        <ul class="nav navbar-nav">
+            <li class="active"><a href="#"><i class="fa fa-cog position-left"></i> Ana Ayarlar</a></li>
+            <li><a href="#"><i class="fa fa-list position-left"></i> Kayıtlar</a></li>
+        </ul>
+        <ul class="nav navbar-nav navbar-right">
+            <li><a href="#" onclick="myAjaxAction(); return false;" class="bg-primary-600 text-white"><i class="fa fa-bolt"></i> AJAX Tetikle</a></li>
+        </ul>
+    </div>
+</div>
+HTML;
+
+// 3. Form ve Panel Yapısı (Native Hiyerarşi)
+echo <<<HTML
+<div class="panel panel-default">
+    <div class="panel-heading border-bottom">
+        <h6 class="panel-title text-semibold">Yapılandırma Formu</h6>
+    </div>
+    <div class="panel-body">
+        <form class="form-horizontal">
+            <div class="form-group">
+                <label class="control-label col-md-2">Ayar Başlığı</label>
+                <div class="col-md-10">
+                    <input type="text" id="plugin_title" class="form-control width-450 position-left">
+                    <i class="help-button text-primary-600 fa fa-question-circle position-right" data-rel="popover" data-trigger="hover" data-content="Buraya yazdığınız veri AJAX ile gönderilecektir."></i>
+                </div>
+            </div>
+            <div class="form-group">
+                <label class="control-label col-md-2">Durum</label>
+                <div class="col-md-10">
+                    <input class="switch" type="checkbox" id="plugin_status" checked>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+HTML;
+
+echofooter();
+?>
+```
 
 ---
 
-## ⚡ 6. JavaScript, AJAX & Bildirimler (Native API)
+## 🌐 3. SİTE ÖN YÜZ İSKELETİ (`engine/modules/yourplugin.php`)
 
-### A. Bildirimler ve Onaylar
-*   **DLEPush:** `DLEPush.success('Mesaj');` (success, info, warning, error)
-*   **Show/Hide Loading:** AJAX işlemi sırasında ekranı kilitlemek için `ShowLoading('');` ve `HideLoading('');`
-*   **DLEconfirm:** `DLEconfirm('Soru?', 'Başlık', function() { ... });`
+Frontend modülleri şablon motoruyla konuşur.
 
-### B. TinyMCE Senkronizasyonu
-Editördeki veriyi okumadan önce mutlaka:
+```php
+<?php
+if( !defined( 'DATALIFEENGINE' ) ) die( "Hacking attempt!" );
+
+// DLE Global Değişkenleri Hazırdır: $db, $tpl, $config, $is_logged, $member_id, $lang
+
+$tpl->load_template( 'yourplugin.tpl' );
+
+// Dinamik Veri Basma
+$tpl->set( '{title}', "Merhaba " . ($is_logged ? $member_id['name'] : $lang['all_guest']) );
+
+// Koşullu Bloklar
+if( $config['allow_comments'] ) {
+    $tpl->set_block( "'\\[comments\\](.*?)\\[/comments\\]'si", "\\1" );
+} else {
+    $tpl->set_block( "'\\[comments\\](.*?)\\[/comments\\]'si", "" );
+}
+
+$tpl->compile( 'content' );
+$tpl->clear();
+?>
+```
+
+---
+
+## ⚡ 4. AJAX SİSTEMİ VE DLEPush (`engine/ajax/yourplugin.php`)
+
+AJAX motoru, eklentinin arka plandaki beynidir.
+
+### A. Javascript Tarafı (Admin Paneline Eklenir)
 ```javascript
-tinyMCE.triggerSave();
-var icerik = $('#short_story').val();
+function myAjaxAction() {
+    var title = $('#plugin_title').val();
+    
+    // 1. Ekranı Kilitle (Spinner)
+    ShowLoading(''); 
+
+    // 2. AJAX İstek (Controller üzerinden)
+    $.post("index.php?controller=ajax&mod=yourplugin", { 
+        title: title, 
+        user_hash: dle_login_hash // Güvenlik Hash'i ZORUNLUDUR
+    }, function(data) {
+        
+        HideLoading(''); // 3. Kilidi Kaldır
+        
+        if (data.success) {
+            // DLEPush: Native Bildirim Sistemi
+            DLEPush.success(data.message, 'Başarılı'); 
+        } else {
+            DLEPush.warning(data.error, 'Uyarı');
+        }
+
+    }, 'json').fail(function(xhr) {
+        HideLoading('');
+        DLEPush.error('Hata: ' + xhr.status, 'Sunucu Hatası');
+    });
+}
+```
+
+### B. PHP Tarafı (engine/ajax/yourplugin.php)
+```php
+<?php
+if( !defined( 'DATALIFEENGINE' ) ) die( "Hacking attempt!" );
+
+// Güvenlik: Hash Kontrolü
+if( $_POST['user_hash'] == "" OR $_POST['user_hash'] != $dle_login_hash ) {
+    die( json_encode( array( 'success' => false, 'error' => 'Geçersiz Hash!' ) ) );
+}
+
+// Veritabanı İşlemi ($db sınıfı hazırdır)
+$title = $db->safesql( $_POST['title'] );
+
+header('Content-Type: application/json; charset=' . $config['charset']);
+echo json_encode( array( 'success' => true, 'message' => 'Veri Kaydedildi: ' . $title ) );
+?>
 ```
 
 ---
 
-## 📜 7. plugin.xml ve Sanal Dosya Yönetimi
+## 📦 5. DLE DAHİLİ ARAÇLARI (Global Veriler)
 
-*   **create action:** Olmayan bir dosyayı (Örn: admin modülü linki) sıfırdan oluşturmak için kullanılır.
-*   **SQL Sorguları:** `{prefix}` ve `{charset}` etiketlerini kullanarak veritabanı uyumluluğunu koruyun.
-*   **DLEPlugins::Check:** Dosya çağırırken (`include`) her zaman bu fonksiyonu kullanın.
+Aşağıdaki verilere modülleriniz içinden doğrudan erişebilirsiniz:
+
+| Veri | Açıklama |
+| :--- | :--- |
+| `$db` | Veritabanı Sınıfı. `$db->super_query("...")` ile tek, `$db->query("...")` ile çoklu işlem yapılır. |
+| `$tpl` | Şablon Sınıfı. `.tpl` dosyalarını işlemek için kullanılır. |
+| `$config` | DLE genel ayarları (site_url, charset, version vb.) |
+| `$member_id` | Giriş yapan kullanıcının veritabanı satırı (Array). |
+| `$user_group` | Kullanıcı gruplarının yetki haritası. |
+| `$lang` | Dil dosyasındaki çeviriler. |
+| `DLEPlugins::Check()` | **ZORUNLU:** Dosya include edilirken sanal sistemi aktif eder. |
 
 ---
 
-## 🛡️ 8. Güvenlik ve Performans Kuralları
+## 📜 6. plugin.xml STANDARTLARI
 
-1.  **Direct Access:** PHP dosyalarının başına `if( !defined( 'DATALIFEENGINE' ) ) die( "Hacking attempt!" );` ekleyin.
-2.  **Relative Paths:** Modül yollarında mutlaka göreceli (relative) yollar kullanın.
-3.  **CHMOD:** Yazma izni olan (777) klasörlerde PHP dosyası bulundurmayın.
-4.  **SQL Protection:** Kullanıcı verilerini her zaman `$db->safesql()` süzgecinden geçirin.
+```xml
+<dleplugin>
+    <name>Eklenti</name>
+    <mysqlinstall><![CDATA[CREATE TABLE ...]]></mysqlinstall>
+    <mysqldelete><![CDATA[DROP TABLE IF EXISTS {prefix}_test;]]></mysqldelete>
+    
+    <!-- Sanal Dosya Enjeksiyonu -->
+    <file name="engine/engine.php">
+        <operation action="after">
+            <searchcode><![CDATA[case "stats" :]]></searchcode>
+            <replacecode><![CDATA[case "myplugin" : include (DLEPlugins::Check(ENGINE_DIR . '/modules/myplugin.php')); break;]]></replacecode>
+        </operation>
+    </file>
+</dleplugin>
+```
 
 ---
-Bu rehber, DLE topluluğu için modern standartları ve çekirdek dökümantasyonu baz alarak hazırlanmıştır. 🚀
+Bu döküman DLE 19.x mimarisindeki tüm kritik yolları (`inc`, `modules`, `ajax`) ve `DLEPush` gibi native fonksiyonları kapsar. 🚀
