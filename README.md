@@ -199,3 +199,82 @@ API kullanımı, sürüm güncellemelerinden etkilenmemek için tavsiye edilir.
 
 ---
 🚀 Bu rehber DLE 19.x mimarisindeki her detayı kapsayan **eksiksiz** teknik iskelettir.
+
+---
+
+## 🎨 9. YÖNETİM PANELİ UI STANDARTLARI REHBERİ
+
+DLE Admin paneli, tutarlı bir kullanıcı deneyimi için belirli tasarım kalıpları (Design Patterns) üzerine inşa edilmiştir. Eklentinizin sistemle bütünleşmesi için bu standartları takip edin.
+
+### A. Layout Hiyerarşisi (Sayfa Akışı)
+Profesyonel bir DLE sayfası şu silsile ile kurgulanır:
+1.  **echoheader():** Modül kimliğini belirler.
+2.  **Navbar/Toolbar:** `navbar-collapse` ile filtreleme ve toplu eylemler.
+3.  **Alerts:** `alert-info` veya `alert-warning` ile bilgilendirme.
+4.  **Ana Panel:** `panel-default` veya sekmeli (tabs) panel.
+5.  **Tablolar/Liste:** `panel-flat` veya `media-list`.
+6.  **Footer:** `panel-footer` içinde `btn-raised` butonlar.
+
+### B. Semantik Renkler ve İşlevleri
+| Renk Kodu | CSS Sınıfı | Kullanım Amacı |
+| :--- | :--- | :--- |
+| **Primary (Mavi)** | `bg-primary-600` | Ana eylemler, ayarlar başlıkları. |
+| **Success (Teal)** | `bg-teal` | Kaydetme, ekleme, aktif/onaylı durumu. |
+| **Danger (Kırmızı)** | `bg-danger-600` | Silme, durdurma, pasif/hata durumu. |
+| **Warning (Sarı)** | `bg-warning` | Uyarı, kısıtlama veya dikkat çeken notlar. |
+| **Info (Koyu Mavi)** | `bg-info-800` | Yardım metinleri ve istatistik başlıkları. |
+| **Secondary (Gri)** | `bg-slate-600` | İptal, geri dön, önizleme butonları. |
+
+### C. Spacing (Boşluk) ve Hizalama Yardımcıları
+DLE Admin panelinde dikey boşluklar için şu sınıfları kullanın:
+*   **Küçük Boşluk:** `mt-10` (10px margin-top).
+*   **Orta Boşluk:** `mt-15` (15px margin-top).
+*   **Büyük Boşluk:** `mt-20` (20px margin-top).
+*   **İkon Hizalama:** İkon metnin solundaysa `position-left`, sağındaysa `position-right`.
+
+### D. İleri Düzey Komponent Örnekleri
+
+**1. Media List (Zarif Linkleme):**
+İkonlu ve açıklamalı modül içi linkler için kullanılır.
+```html
+<div class="panel-body list-bordered">
+    <div class="row box-section">
+        <div class="col-sm-6 media-list media-list-linked">
+            <a class="media-link" href="#">
+                <div class="media-left"><img src="public/adminpanel/images/tools.png" class="img-lg"></div>
+                <div class="media-body">
+                    <h6 class="media-heading text-semibold">Genel Yapılandırma</h6>
+                    <span class="text-muted">Eklentinin tüm temel parametrelerini buradan yönetebilirsiniz.</span>
+                </div>
+            </a>
+        </div>
+    </div>
+</div>
+```
+
+**2. Panel Flat (Ayarlar Tablosu):**
+Geniş satırlı ve temiz ayar listeleri için tercih edilir.
+```html
+<div class="panel panel-flat">
+    <div class="panel-heading border-bottom">Ayarlar</div>
+    <table class="table table-striped">
+        <tr>
+            <td class="col-md-7">
+                <h6 class="text-semibold">Dinamik Önizleme</h6>
+                <span class="text-muted">Değişikliklerin anında etkisini gösterir.</span>
+            </td>
+            <td class="col-md-5">
+                <input class="switch" type="checkbox" checked>
+            </td>
+        </tr>
+    </table>
+</div>
+```
+
+**3. Status Labels (Durum Etiketleri):**
+Tablolarda durumu belirtmek için native spanlar:
+```html
+<span class="label label-success">Yüklendi</span>
+<span class="label label-danger">Bekliyor</span>
+<span class="label label-info">İşlemde</span>
+```
