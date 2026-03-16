@@ -278,3 +278,64 @@ Tablolarda durumu belirtmek için native spanlar:
 <span class="label label-danger">Bekliyor</span>
 <span class="label label-info">İşlemde</span>
 ```
+
+### E. Native Tablo Yapısı (Data Tables)
+DLE'de veri listeleme işlemleri için `panel-flat` içine gömülü responsive tablolar kullanılır.
+
+**1. Tablo Sınıfları:**
+```html
+<div class="panel panel-default">
+    <div class="panel-heading">Veri Listesi</div>
+    <table class="table table-striped table-xs table-hover">
+        <thead>
+            <tr>
+                <th class="hidden-xs">#</th>
+                <th>Başlık</th>
+                <th class="text-center">İşlem</th>
+                <th style="width: 40px"><input type="checkbox" name="master_box" onclick="ckeck_uncheck_all();" class="icheck"></th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td class="hidden-xs">1</td>
+                <td>Örnek Veri</td>
+                <td class="text-center"><a href="#"><i class="fa fa-pencil"></i></a></td>
+                <td><input name="selected[]" value="1" type="checkbox" class="icheck"></td>
+            </tr>
+        </tbody>
+    </table>
+    <!-- Toplu İşlemler -->
+    <div class="panel-footer">
+        <div class="pull-right">
+            <select name="action" class="uniform position-left">
+                <option value="">İşlem Seçin</option>
+                <option value="delete">Sil</option>
+            </select>
+            <input class="btn bg-teal btn-sm btn-raised" type="submit" value="Gönder">
+        </div>
+    </div>
+</div>
+```
+
+**2. Masaüstü/Mobil Görünürlük:**
+*   `hidden-xs`: Mobilde sütunu gizler.
+*   `hidden-sm`: Tablette sütunu gizler.
+*   `text-nowrap`: Sütun içeriğinin kırılmasını önler.
+
+**3. Çoklu Seçim (Multi-Select) Mantığı:**
+DLE'de tablo satırlarını seçmek için `master_box` kullanılır. Seçilen satıra otomatik olarak `warning` (sarı zemin) sınıfı atanır:
+```javascript
+function ckeck_uncheck_all() {
+    var frm = document.editnews;
+    for (var i=0;i<frm.elements.length;i++) {
+        var elmnt = frm.elements[i];
+        if (elmnt.type=='checkbox') {
+            if(frm.master_box.checked == true) $(elmnt).parents('tr').addClass('warning');
+            else $(elmnt).parents('tr').removeClass('warning');
+            elmnt.checked = frm.master_box.checked;
+        }
+    }
+}
+```
+
+---
